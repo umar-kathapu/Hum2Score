@@ -1,0 +1,56 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+*.so
+.Python
+
+# Virtual Environment
+.venv/
+venv/
+env/
+.pytest_cache/
+node_modules/
+
+# Dataset - Do not upload
+dataset/
+processed_data/
+
+# Generated outputs
+outputs/generated/
+outputs/temp/
+*.mid
+*.midi
+*.wav
+*.mp3
+*.m4a
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Environment variables
+.env
+.env.*
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.bak
+
+# Generated analysis outputs
+outputs/
+
+# Python cache
+__pycache__/
+*.pyc

@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Hum2Score | AI Musical Score Generator</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<header>
+    <h2>🎵 Hum2Score</h2>
+    <p>AI-Based Musical Score Generation</p>
+</header>
+
+<main>
+
+    <section class="hero">
+
+        <h1>Turn Your Humming Into Music</h1>
+
+        <p>Upload your humming audio or record with your microphone and let AI generate musical notes.</p>
+
+        <!-- Mode Selector -->
+        <div class="mode-selector">
+            <button type="button" class="mode-btn active" id="modeUploadBtn">
+                📁 Upload Audio
+            </button>
+            <button type="button" class="mode-btn" id="modeRecordBtn">
+                🎤 Record Humming
+            </button>
+        </div>
+
+        <!-- Mode 1: File Upload Box (Preserved V1) -->
+        <div class="upload-box" id="uploadBox">
+
+            <input
+                type="file"
+                id="audioFile"
+                accept=".wav,.mp3,.m4a,.ogg,.flac"
+            >
+
+            <button id="generateBtn">
+                Generate Musical Score
+            </button>
+
+            <p id="status">Upload your humming audio to begin.</p>
+
+        </div>
+
+        <!-- Mode 2: Microphone Record Box (New V2) -->
+        <div class="record-box" id="recordBox" hidden>
+
+            <div class="record-controls">
+                <button type="button" id="startRecordBtn" class="record-btn">
+                    🔴 Start Recording
+                </button>
+                <button type="button" id="stopRecordBtn" class="record-btn" disabled>
+                    ⏹ Stop Recording
+                </button>
+            </div>
+
+            <div class="recording-indicator" id="recordingIndicator" hidden>
+                <span class="pulse-dot"></span>
+                <span id="recordingTimer">00:00</span>
+                <span class="recording-pulse-text">Recording humming...</span>
+            </div>
+
+            <div class="preview-box" id="previewBox" hidden>
+                <p class="preview-label">🎧 Preview Your Recording:</p>
+                <audio id="recordedAudioPreview" controls></audio>
+                <div class="record-actions">
+                    <button type="button" id="generateRecordBtn" class="generate-record-btn">
+                        Generate Musical Score
+                    </button>
+                    <button type="button" id="rerecordBtn" class="rerecord-btn">
+                        🔄 Re-record
+                    </button>
+                </div>
+            </div>
+
+            <p id="recordStatus">Click "Start Recording" to hum using your microphone.</p>
+
+        </div>
+
+    </section>
+
+
+    <section id="results" hidden>
+
+        <h2>Generated Results</h2>
+
+        <div class="summary">
+
+            <h3>
+                Total Notes Detected:
+                <span id="noteCount">0</span>
+            </h3>
+
+            <h3>
+                Estimated BPM:
+                <span id="bpmValue">--</span>
+            </h3>
+
+        </div>
+
+
+        <div class="downloads">
+
+            <a id="midiDownload" href="#" download>
+                Download MIDI
+            </a>
+
+            <a id="xmlDownload" href="#" download>
+                Download MusicXML
+            </a>
+
+            <button type="button" id="originalPdfBtn" class="download-pdf-btn" disabled>
+                📄 Export PDF Score
+            </button>
+
+        </div>
+
+
+        <!-- MIDI PLAYER -->
+
+        <section class="player-section">
+
+            <h3>🎹 Musical Playback</h3>
+
+            <p>Listen to your generated musical composition.</p>
+
+            <div class="player-controls">
+
+                <button id="playBtn" disabled>▶ Play</button>
+
+                <button id="pauseBtn" disabled>⏸ Pause</button>
+
+                <button id="stopBtn" disabled>⏹ Stop</button>
+
+            </div>
+
+            <div class="speed-control">
+
+                <label for="speedControl">
+                    Playback Speed:
+                </label>
+
+                <select id="speedControl">
+
+                    <option value="0.5">0.5x</option>
+                    <option value="0.75">0.75x</option>
+                    <option value="1" selected>1x</option>
+                    <option value="1.25">1.25x</option>
+                    <option value="1.5">1.5x</option>
+                    <option value="2">2x</option>
+
+                </select>
+
+            </div>
+
+            <p id="playerStatus">Generate a score to enable playback.</p>
+
+        </section>
+
+
+        <!-- SHEET MUSIC -->
+
+        <h3>🎼 Musical Score Preview</h3>
+
+        <div id="scoreContainer">
+            <p>Your generated musical notation will appear here.</p>
+        </div>
+
+
+        <!-- DETECTED NOTES -->
+
+        <h3>Detected Notes</h3>
+
+        <div class="table-container">
+
+            <table>
+
+                <thead>
+
+                    <tr>
+                        <th>Note</th>
+                        <th>Start Time</th>
+                        <th>End Time</th>
+                    </tr>
+
+                </thead>
+
+                <tbody id="notesTable"></tbody>
+
+            </table>
+
+        </div>
+
+    </section>
+
+
+    <!-- ======================================================= -->
+    <!-- SEPARATE INTERACTIVE SCORE EDITOR PANEL (V2 NEW)        -->
+    <!-- ======================================================= -->
+    <section class="editor-section" id="scoreEditorSection" hidden>
+
+        <!-- Editor Header & Status Badge -->
+        <div class="editor-header">
+            <div class="editor-title-group">
+                <h2>✏️ Interactive Score Editor</h2>
+                <p>Modify detected pitches, adjust timing, add or delete notes, and preview the edited score in real time.</p>
+            </div>
+            <div class="editor-badge" id="editorStatusBadge">Pristine Score (No Edits)</div>
+        </div>
+
+        <!-- Editor Action Toolbar -->
+        <div class="editor-toolbar">
+            <button type="button" id="editorAddNoteBtn" class="editor-btn secondary">➕ Add Note</button>
+            <button type="button" id="editorTransposeUpBtn" class="editor-btn secondary">⬆️ Transpose (+1)</button>
+            <button type="button" id="editorTransposeDownBtn" class="editor-btn secondary">⬇️ Transpose (-1)</button>
+            <button type="button" id="editorResetBtn" class="editor-btn danger">🔄 Reset to Original AI Score</button>
+        </div>
+
+        <!-- Separate Interactive Notes Table -->
+        <div class="table-container editor-table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Pitch</th>
+                        <th>Start Time</th>
+                        <th>Duration</th>
+                        <th>Audition</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="editorNotesTableBody"></tbody>
+            </table>
+        </div>
+
+        <!-- Separate Edited Sheet Music Container -->
+        <div class="edited-score-preview-group">
+            <h3>🎼 Edited Musical Score Preview</h3>
+            <p class="edited-preview-desc">Visual notation of your customized composition (rendered separately from the original score).</p>
+            <div id="editedScoreContainer">
+                <p>Your edited musical notation will appear here.</p>
+            </div>
+        </div>
+
+        <!-- Separate Edited Playback Panel -->
+        <section class="player-section edited-player-section">
+            <h3>🎹 Edited Composition Playback</h3>
+            <p>Audition your customized melody with Tone.js synthesis.</p>
+            <div class="player-controls">
+                <button type="button" id="playEditedBtn" disabled>▶ Play Edited</button>
+                <button type="button" id="pauseEditedBtn" disabled>⏸ Pause</button>
+                <button type="button" id="stopEditedBtn" disabled>⏹ Stop</button>
+            </div>
+            <p id="editedPlayerStatus">Generate a score to enable playback.</p>
+        </section>
+
+        <!-- Separate Edited Downloads Panel -->
+        <div class="edited-downloads-box">
+            <h3>💾 Download Customized Score</h3>
+            <p>Export your edited musical composition in standard MIDI and MusicXML formats.</p>
+            <div class="downloads">
+                <a id="editedMidiDownload" href="#" download="Hum2Score_Edited.mid">
+                    Download Edited MIDI
+                </a>
+                <a id="editedXmlDownload" href="#" download="Hum2Score_Edited.musicxml">
+                    Download Edited MusicXML
+                </a>
+                <button type="button" id="editedPdfBtn" class="download-pdf-btn" disabled>
+                    📄 Export Edited PDF Score
+                </button>
+            </div>
+        </div>
+
+    </section>
+
+</main>
+
+
+<footer>
+    <p>AI Musical Score Generation Project | 2026</p>
+</footer>
+
+
+<script src="https://cdn.jsdelivr.net/npm/opensheetmusicdisplay@1.9.2/build/opensheetmusicdisplay.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/@tonejs/midi@2.0.28/build/Midi.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/tone@15.1.22/build/Tone.js"></script>
+
+<script src="script.js"></script>
+
+</body>
+</html>
