@@ -8,7 +8,7 @@ const isLocalhost =
 
 const API_URL = isLocalhost
     ? "http://127.0.0.1:8000"
-    : "https://hum2score-1.onrender.com";
+    : "https://hum2score-2.onrender.com";
 
 console.log(`[Hum2Score] Initialized API_URL: ${API_URL} (Environment: ${isLocalhost ? "Local Development" : "Remote Production"})`);
 
