@@ -2,18 +2,65 @@ import os
 import uuid
 import shutil
 import traceback
-
-import librosa
-import numpy as np
-import pretty_midi
-import music21
+import threading
 
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
-from music21 import stream, note, tempo, meter, duration
+# --------------------------------------------------
+# THREAD-SAFE LAZY MODULE LOADER
+# --------------------------------------------------
+_audio_modules_loaded = False
+_import_lock = threading.Lock()
+
+# Global module holders
+librosa = None
+np = None
+pretty_midi = None
+music21 = None
+stream = None
+note = None
+tempo = None
+meter = None
+duration = None
+
+
+def get_audio_modules():
+    """
+    Lazily imports heavy scientific audio libraries (librosa, numpy, pretty_midi, music21)
+    on first use within a thread-safe lock. Subsequent calls bypass the lock immediately.
+    This guarantees that the FastAPI application and GET / start instantly without blocking.
+    """
+    global _audio_modules_loaded, librosa, np, pretty_midi, music21, stream, note, tempo, meter, duration
+    if not _audio_modules_loaded:
+        with _import_lock:
+            if not _audio_modules_loaded:
+                import librosa as _librosa
+                import numpy as _np
+                import pretty_midi as _pretty_midi
+                import music21 as _music21
+                from music21 import (
+                    stream as _stream,
+                    note as _note,
+                    tempo as _tempo,
+                    meter as _meter,
+                    duration as _duration
+                )
+
+                librosa = _librosa
+                np = _np
+                pretty_midi = _pretty_midi
+                music21 = _music21
+                stream = _stream
+                note = _note
+                tempo = _tempo
+                meter = _meter
+                duration = _duration
+                _audio_modules_loaded = True
+
+    return librosa, np, pretty_midi, music21, stream, note, tempo, meter, duration
 
 
 # --------------------------------------------------
@@ -89,6 +136,8 @@ async def generate_score(audio: UploadFile = File(...)):
     )
 
     try:
+        # Load audio-processing modules into module-level global scope
+        get_audio_modules()
 
         # ------------------------------------------
         # 1. SAVE UPLOADED AUDIO

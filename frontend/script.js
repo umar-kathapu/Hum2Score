@@ -13,6 +13,34 @@ const API_URL = isLocalhost
 console.log(`[Hum2Score] Initialized API_URL: ${API_URL} (Environment: ${isLocalhost ? "Local Development" : "Remote Production"})`);
 
 // ==================================================
+// PROACTIVE BACKEND WAKE-UP (NON-BLOCKING)
+// ==================================================
+function pingBackend() {
+    console.log(`[Hum2Score] Non-blocking wake-up ping initiated: ${API_URL}/`);
+    fetch(`${API_URL}/`, {
+        method: "GET",
+        cache: "no-store",
+        mode: "cors"
+    })
+    .then(response => {
+        if (response.ok) {
+            console.log("[Hum2Score] Backend health check: Active and responsive.");
+        } else {
+            console.warn(`[Hum2Score] Backend health check status: ${response.status}`);
+        }
+    })
+    .catch(err => {
+        console.log(`[Hum2Score] Backend is warming up from sleep: ${err.message}`);
+    });
+}
+
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", pingBackend);
+} else {
+    pingBackend();
+}
+
+// ==================================================
 // HTML ELEMENTS - V1 CORE
 // ==================================================
 const audioFile = document.getElementById("audioFile");
@@ -362,6 +390,26 @@ async function executeScoreGeneration({ audioBlob, fileName, triggerBtn, statusE
         controller.abort();
     }, timeoutDuration);
 
+    let progressInterval = null;
+    let elapsedSeconds = 0;
+
+    function startProgressUpdates() {
+        clearInterval(progressInterval);
+        elapsedSeconds = 0;
+        statusElem.textContent = "Analyzing your humming audio... (this may take 10-30s)";
+
+        progressInterval = setInterval(() => {
+            elapsedSeconds += 1;
+            if (elapsedSeconds === 12) {
+                statusElem.textContent = "Analyzing audio... (if server was sleeping, waking up takes ~30-50s)";
+            } else if (elapsedSeconds === 28) {
+                statusElem.textContent = "Still waiting for server... Render free instance is waking up...";
+            } else if (elapsedSeconds === 50) {
+                statusElem.textContent = "Server container is active, finalizing analysis soon...";
+            }
+        }, 1000);
+    }
+
     console.log(`[Hum2Score] Submitting audio to: ${API_URL}/generate`);
     console.log(`[Hum2Score] File: ${fileName}, Size: ${(audioBlob.size / 1024).toFixed(1)} KB, MIME: ${audioBlob.type || "audio/wav"}`);
 
@@ -369,7 +417,7 @@ async function executeScoreGeneration({ audioBlob, fileName, triggerBtn, statusE
         const formData = new FormData();
         formData.append("audio", audioBlob, fileName);
 
-        statusElem.textContent = "Analyzing your humming audio... (this may take 10-30s)";
+        startProgressUpdates();
 
         let response;
         try {
@@ -385,9 +433,16 @@ async function executeScoreGeneration({ audioBlob, fileName, triggerBtn, statusE
             throw new Error(`Network failure: Unable to reach backend at ${API_URL}. Is the backend running? (${fetchErr.message})`);
         } finally {
             clearTimeout(timeoutId);
+            clearInterval(progressInterval);
         }
 
         console.log(`[Hum2Score] Server responded with status: ${response.status} ${response.statusText}`);
+
+        // Handle 502 / 503 Render wake-up gateway drops without automatic retry
+        if (response.status === 502 || response.status === 503) {
+            console.warn(`[Hum2Score] Server returned status ${response.status}. The backend container may still be spinning up.`);
+            throw new Error(`The backend server is waking up from sleep mode (Status ${response.status}). Please wait 10-15 seconds and click Generate again to retry.`);
+        }
 
         let data;
         try {
@@ -497,6 +552,7 @@ async function executeScoreGeneration({ audioBlob, fileName, triggerBtn, statusE
         playerStatus.textContent = "Playback initialization failed.";
     } finally {
         clearTimeout(timeoutId);
+        clearInterval(progressInterval);
         triggerBtn.disabled = false;
         triggerBtn.textContent = originalText;
     }
